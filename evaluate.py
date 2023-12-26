@@ -162,7 +162,7 @@ def evaluate_ARCTIC(model_path="../best_arctic.ckpt"):
     img_path = f'../data/deepfashion-multimodal/images'
     _ ,test_loader=mktrainval(data_dir='../data/deepfashion-multimodal',\
                                             vocab_path='../data/deepfashion-multimodal/vocab.json',\
-                                            batch_size=3,workers=0) 
+                                            batch_size=32,workers=0) 
     data_loader=test_loader
     model.eval()
     cands = []
@@ -176,13 +176,16 @@ def evaluate_ARCTIC(model_path="../best_arctic.ckpt"):
         with torch.no_grad():
             # 通过束搜索，生成候选文本
             texts = model.generate_by_beamsearch(imgs.to(device), config.beam_k, config.max_len+2)
+            #texts= model.generate_normal_version(imgs.to(device), config.max_len+2) --k=1的情况 效果会差点，但是跑得快
             # 候选文本
             cands.extend([filter_useless_words(text, filterd_words) for text in texts])
             # 参考文本
             refs.extend([filter_useless_words(cap, filterd_words) for cap in caps.tolist()])
-    
+    print("正在计算BLEU-4分数...")
     bleu4_score = get_BLEU_score(cands, refs)
+    print("正在计算CIDEr-D分数...")
     cider_d_score = get_CIDER_D_score(model.vocab,cands, refs)
+    print("正在计算SPICE分数...")
     spice_score= get_SPICE_score(model.vocab,cands, refs)
     print(f"@@@实际值 BLEU:{bleu4_score}|CIDEr-D:{cider_d_score}|SPICE:{spice_score}")
     print(f"@@@相对值（0-1） BLEU:{bleu4_score}|CIDEr-D:{cider_d_score/max_cider}|SPICE:{spice_score/max_spice}")

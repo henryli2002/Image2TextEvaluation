@@ -256,3 +256,29 @@ class ARCTIC(nn.Module): #模型主体部分
                 gen_sent = end_sents[end_probs.index(max(end_probs))]
             texts.append(gen_sent)
         return texts
+    def generate_normal_version(self,images,max_len): #普通版本的生成--相当于k=1的束搜索
+        device=images.device
+        image_codes = self.encoder(images)#一个batch的图像编码
+        texts = []
+        for image in image_codes:
+            image=image.unsqueeze(0)
+            cur_sents=torch.LongTensor([self.vocab['<start>']]).to(device) #序列
+
+            sent_lens=torch.LongTensor([1]).to(device)
+            cur_sent_embed=self.decoder.embed(cur_sents)
+            image, cur_sent_embed, _, _,hidden_state = self.decoder.init_hidden_state(image,cur_sent_embed, sent_lens)
+            while True:
+                preds, _, hidden_state = self.decoder.forward_step( #一个时间步
+                    image, cur_sent_embed, hidden_state.contiguous())
+                preds = nn.functional.log_softmax(preds, dim=1) #log_softmax
+                #print(f"preds {preds.shape}") #获得概率分布
+                values, indices = preds[0].topk(1, 0, True, True) #获得最大概率的概率 和对应词索引
+                cur_sents=torch.cat([cur_sents,indices],dim=0) #拼接 生成序列 长度逐渐+1 
+                #print(f"indices {indices.shape} {indices} | {values}")
+                cur_sent_embed=self.decoder.embed(indices)
+                if indices==self.vocab['<end>']:
+                    break
+                if cur_sents.size(0) >= max_len:
+                    break
+            texts.append(cur_sents.tolist())
+        return texts
