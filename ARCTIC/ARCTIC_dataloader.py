@@ -37,6 +37,7 @@ class ImageTextDataset(Dataset):
 
     def __getitem__(self, i):
         # 第i个文本描述对应第(i // captions_per_image)张图片
+        print(self.data_img[i])
         img = Image.open(img_path+"/"+self.data_img[i]).convert('RGB')
         if self.transform is not None:
             img = self.transform(img)
@@ -50,7 +51,7 @@ class ImageTextDataset(Dataset):
         
     def __len__(self):
         return self.dataset_size
-def mktrainval(data_dir, vocab_path, batch_size, workers=4):
+def mktrainval(data_dir, vocab_path, batch_size, workers=4,is_transform=True):
     train_tx = transforms.Compose([
         transforms.Resize(256), # 重置图像分辨率
         transforms.RandomCrop(224), # 随机裁剪
@@ -63,9 +64,17 @@ def mktrainval(data_dir, vocab_path, batch_size, workers=4):
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
-    train_set = ImageTextDataset(os.path.join(data_dir, 'train_captions.json'), vocab_path, 'train',  transform=train_tx)
-    test_set = ImageTextDataset(os.path.join(data_dir, 'test_captions.json'), vocab_path, 'test', transform=val_tx)
-
+    no_trans=transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+    ])
+    if is_transform:
+        train_set = ImageTextDataset(os.path.join(data_dir, 'train_captions.json'), vocab_path, 'train',  transform=train_tx)
+        test_set = ImageTextDataset(os.path.join(data_dir, 'test_captions.json'), vocab_path, 'test', transform=val_tx)
+    else:
+        train_set = ImageTextDataset(os.path.join(data_dir, 'train_captions.json'), vocab_path, 'train', transform=no_trans)
+        test_set = ImageTextDataset(os.path.join(data_dir, 'test_captions.json'), vocab_path, 'test', transform=no_trans)
     train_loader = torch.utils.data.DataLoader(
         train_set, batch_size=batch_size, shuffle=True, num_workers=workers, pin_memory=True)
     
