@@ -16,11 +16,11 @@ from argparse import Namespace
 
 from ARCTIC.ARCTIC_model import ARCTIC,AttentionDecoder,AdditiveAttention,ImageEncoder
 from ARCTIC.ARCTIC_dataloader import ImageTextDataset ,mktrainval,cap_to_wvec,wvec_to_cap,wvec_to_capls
+import matplotlib.pyplot as plt
 
 max_cider=0.0043918896512309125
 max_spice=0.18703616844830037
 img_path = f'../data/deepfashion-multimodal/images'
-
 def cider_d(reference_list, candidate_list, n=4):
     def count_ngrams(tokens, n):
         ngrams = []
@@ -131,11 +131,18 @@ def get_SPICE_score(vocab,cands, refs): #获得SPICE分数
     cands_ = [wvec_to_cap(vocab,cand) for cand in cands]
     return spice(refs_, cands_)
 
-
 def filter_useless_words(sent, filterd_words):
     # 去除句子中不参与BLEU值计算的符号
     return [w for w in sent if w not in filterd_words]
-
+def filter_cut_useless_words(sent, filterd_words):
+    res=[]
+    for w in sent:
+        if w not in filterd_words:
+            res.append(w)
+        else:
+            if w==155:
+                return res
+    return res
 def evaluate_ARCTIC(model_path="../best_arctic.ckpt"):
     model=torch.load(model_path)["model"] #加载模型
     ARCTIC_config = Namespace(
@@ -189,5 +196,61 @@ def evaluate_ARCTIC(model_path="../best_arctic.ckpt"):
     spice_score= get_SPICE_score(model.vocab,cands, refs)
     print(f"@@@实际值 BLEU:{bleu4_score}|CIDEr-D:{cider_d_score}|SPICE:{spice_score}")
     print(f"@@@相对值（0-1） BLEU:{bleu4_score}|CIDEr-D:{cider_d_score/max_cider}|SPICE:{spice_score/max_spice}")
-
-evaluate_ARCTIC()
+def generate_n(model_path="../best_arctic.ckpt",num_g=5): #随机生成n个文本
+    model=torch.load(model_path)["model"] #加载模型
+    ARCTIC_config = Namespace(
+        max_len = 93,
+        captions_per_image = 1,
+        batch_size = 32,
+        image_code_dim = 2048,
+        word_dim = 512,
+        hidden_size = 512,
+        attention_dim = 512,
+        num_layers = 1,
+        encoder_learning_rate = 0.0001,
+        decoder_learning_rate = 0.0005,
+        num_epochs = 10,
+        grad_clip = 5.0,
+        alpha_weight = 1.0,
+        evaluate_step = 900, # 每隔多少步在验证集上测试一次
+        checkpoint = None, # 如果不为None，则利用该变量路径的模型继续训练
+        best_checkpoint = 'model/ARCTIC/best_ARCTIC.ckpt', # 验证集上表现最优的模型的路径
+        last_checkpoint = 'model/ARCTIC/last_ARCTIC.ckpt', # 训练完成时的模型的路径
+        beam_k = 5 #束搜索的束宽
+    )
+    img_path = f'../data/deepfashion-multimodal/images'
+    _ ,test_loader=mktrainval(data_dir='../data/deepfashion-multimodal',\
+                                            vocab_path='../data/deepfashion-multimodal/vocab.json',\
+                                            batch_size=1,workers=0,is_transform=False)
+    
+    model.eval()
+    cands = []
+    # 存储参考文本
+    refs = []
+    # 需要过滤的词
+    filterd_words = set({model.vocab['<start>'], model.vocab['<end>'], model.vocab['<pad>']})
+    device = next(model.parameters()).device
+    for i, (imgs, caps, caplens) in enumerate(test_loader): #随机抽
+        with torch.no_grad():
+            # 通过束搜索，生成候选文本
+            imgs_=imgs.clone()
+            texts = model.generate_by_beamsearch(imgs.to(device), ARCTIC_config.beam_k, ARCTIC_config.max_len+2)
+            # 候选文本
+            cands.extend([filter_useless_words(text, filterd_words) for text in texts])
+            # 参考文本
+            refs.extend([filter_useless_words(cap, filterd_words) for cap in caps.tolist()])
+            res_string=wvec_to_cap(model.vocab,cands[i])
+            ref_string=wvec_to_cap(model.vocab,refs[i])
+            print(f"@@@生成文本({i+1}/{num_g})：{res_string}")
+            print(f"@@@实际文本({i+1}/{num_g})：{ref_string}")
+            #窗口化显示图片
+            transform_ = transforms.ToPILImage()
+            image_pil = transform_(imgs[0])
+            #image_pil.show()
+            #画出图像
+            plt.imshow(image_pil)
+            plt.show()
+            if i+1>=num_g:
+                break
+#evaluate_ARCTIC()
+generate_n() 
