@@ -27,7 +27,7 @@ def read_json(file_path):
 def QianFan(url, inputs):
     responses = {}  # 创建一个字典来存储输入和相应的响应
 
-    for key, user_input in inputs.items():  # 假设inputs是一个字典
+    for key, user_input in inputs.items():  # inputs是一个字典
         request = {
             "messages": [
             {
@@ -55,7 +55,7 @@ def QianFan(url, inputs):
                 "content": "The backgroud is a mirror."
             },
             ]
-        }
+        }#添加一些前置词
         request["messages"].append({"role": "user", "content": f"Describe the setting of the following scene, focusing solely on the background without including any details about the person:{user_input}"})
 
 
