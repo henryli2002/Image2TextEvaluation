@@ -1,0 +1,7 @@
+res.json 是ViT模型在新数据集上跑的结果
+res_add.json 是LLM接受rew_new以后生成的结果中的第一个句子
+combined_input.json 是上面两个文件按照key拼接value得到的数据，使用时用前4000作为训练，后1000作为测试
+res_new.json blip生成的图像描述，较为简陋
+
+config.json是ViT的设置
+merge——json用来和res_add.json、res.json生成combined_input.json
