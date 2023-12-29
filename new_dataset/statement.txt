@@ -5,3 +5,5 @@ res_new.json blip生成的图像描述，较为简陋
 
 config.json是ViT的设置
 merge——json用来和res_add.json、res.json生成combined_input.json
+
+new_generate.ipynb存储了一些新数据集上训练的模型结果，虽然结果不是很好，主要问题是blip的提取错误和模型性能不足，数据量不足；LLM虽然工作不算完美，但是基本满足要求。
