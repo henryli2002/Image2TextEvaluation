@@ -3,8 +3,8 @@ import json
 import os
 import datetime
 
-API_KEY = 'jIHlGsMYHp4j1MrMZGNmYbCL'
-SECRET_KEY = 'GzG1o4HC6G0qDVxPKcn9Zl4pv20j7CGA'
+API_KEY = 'jIHlGsMYHp4j1MrMZGNmYbCL'  
+SECRET_KEY = 'GzG1o4HC6G0qDVxPKcn9Zl4pv20j7CGA' #估计看到的时候已经过了有效期了所以无所谓了
 
 headers = {
     'Content-Type': 'application/json',
